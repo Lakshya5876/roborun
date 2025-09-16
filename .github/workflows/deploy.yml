@@ -14,54 +14,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
     - name: Checkout
       uses: actions/checkout@v4
       
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        
-    - name: Build web version
-      run: |
-        # Create a simple HTML file for now
-        echo '<!DOCTYPE html>
-<html>
-<head>
-    <title>RoboRun</title>
-    <style>
-        body { margin: 0; padding: 20px; background: #000; color: #fff; font-family: Arial, sans-serif; text-align: center; }
-        h1 { color: #00ff00; font-size: 3em; margin-bottom: 20px; }
-        .game-container { margin: 20px auto; max-width: 800px; }
-        .controls { background: #333; padding: 20px; border-radius: 10px; margin: 20px 0; }
-        .status { color: #ffaa00; font-size: 1.2em; margin: 20px 0; }
-    </style>
-</head>
-<body>
-    <h1>🤖 RoboRun</h1>
-    <div class="game-container">
-        <div class="status">🚧 Game is being built... Please check back soon!</div>
-        <div class="controls">
-            <h3>Controls:</h3>
-            <p>Arrow Keys or WASD - Move</p>
-            <p>Space - Shoot</p>
-            <p>R - Restart</p>
-            <p>P - Pause</p>
-        </div>
-        <p>This is a placeholder while we set up the full web version.</p>
-    </div>
-</body>
-</html>' > index.html
-        
     - name: Setup Pages
       uses: actions/configure-pages@v3
       
