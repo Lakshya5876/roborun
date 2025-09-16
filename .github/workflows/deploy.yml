@@ -33,7 +33,34 @@ jobs:
         
     - name: Build web version
       run: |
-        python -m pygbag --title "RoboRun" --icon "robo.gif" --build main.py
+        # Create a simple HTML file for now
+        echo '<!DOCTYPE html>
+<html>
+<head>
+    <title>RoboRun</title>
+    <style>
+        body { margin: 0; padding: 20px; background: #000; color: #fff; font-family: Arial, sans-serif; text-align: center; }
+        h1 { color: #00ff00; font-size: 3em; margin-bottom: 20px; }
+        .game-container { margin: 20px auto; max-width: 800px; }
+        .controls { background: #333; padding: 20px; border-radius: 10px; margin: 20px 0; }
+        .status { color: #ffaa00; font-size: 1.2em; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>🤖 RoboRun</h1>
+    <div class="game-container">
+        <div class="status">🚧 Game is being built... Please check back soon!</div>
+        <div class="controls">
+            <h3>Controls:</h3>
+            <p>Arrow Keys or WASD - Move</p>
+            <p>Space - Shoot</p>
+            <p>R - Restart</p>
+            <p>P - Pause</p>
+        </div>
+        <p>This is a placeholder while we set up the full web version.</p>
+    </div>
+</body>
+</html>' > index.html
         
     - name: Setup Pages
       uses: actions/configure-pages@v3
@@ -41,7 +68,7 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v2
       with:
-        path: './build/web'
+        path: '.'
         
     - name: Deploy to GitHub Pages
       id: deployment
