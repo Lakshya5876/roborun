@@ -1,489 +1,356 @@
-<html lang="en-us"><script src="https://pygame-web.github.io/archives/0.9/pythons.js" type=module id=site data-LINES=57 data-CONSOLE=25 data-python=python3.12 data-os=vtx,fs,snd,gui async defer>#<!--
-
-print("""
-Loading RoboRun from roborun.apk
-    Pygbag Version : 0.9.2
-    Template Version : 0.9.0
-    Python  : 3.12
-    CDN URL : https://pygame-web.github.io/archives/0.9/
-    Screen  : 1280x720
-    Title   : RoboRun
-    Folder  : roborun
-    Authors : pgw
-    SPDX-License-Identifier: cookiecutter.spdx
-
-""")
-
-
-# screen pixels (real, hardware)
-WIDTH=1024  # 1280
-HEIGHT=600  # 720
-
-# reference/idealized screen pixels
-REFX = 1980
-REFY = 1080
-
-def u(real, ref, v):
-    if abs(v)<0.9999999:
-        result = int( (float(real)/100.0) * (v*1000))
-        if v<0:
-            return real-result
-        return result
-    return int( (real/ref) * v )
-
-def ux(*argv):
-    global WIDTH, REFX
-    acc = 0
-    for v in argv:
-        acc += u(WIDTH, REFX, v)
-    return acc
-
-def uy(*argv):
-    global HEIGHT, REFY
-    acc = 0
-    for v in argv:
-        acc += u(HEIGHT, REFY, v)
-    return acc
-
-
-
-
-# do not rename
-async def custom_site():
-
-    import sys
-    import asyncio
-    import platform
-    import json
-    from pathlib import Path
-
-
-
-    import embed
-
-
-    platform.document.body.style.background = "#7f7f7f"
-
-    import pygame
-
-    def compose():
-        pygame.display.update()
-        window.chromakey(None, *screen.get_colorkey(), 40)
-
-    pygame.init()
-    pygame.font.init()
-
-    screen = pygame.display.set_mode([ux(.100),uy(.100)], pygame.SRCALPHA, 32)
-    screen.set_colorkey( (0,0,0,0), pygame.RLEACCEL )
-    screen.fill( (0,0,0,0) )
-
-    compose()
-
-    platform.window.transfer.hidden = true
-    platform.window.canvas.style.visibility = "visible"
-
-
-
-    apk = "roborun.apk"
-
-    bundle = "roborun"
-
-    # the C or js loader could do that but be explicit.
-    appdir = Path(f"/data/data/{bundle}") # /data/data/roborun
-    appdir.mkdir()
-
-
-    # mount apk
-
-    cfg = {
-        "io": "url",
-        "type":"mount",
-        "mount" : {
-            "point" : appdir.as_posix(),
-            "path" : "/",
-        },
-        "path" : f"/ => {appdir.as_posix()}",
-    }
-
-
-    track = platform.window.MM.prepare(apk, json.dumps(cfg))
-
-    marginx = ux(.020) # 20%
-    marginy = uy(.045) # 45%
-
-
-    def pg_bar(pos):
-        nonlocal marginx, marginy
-        # resolution of progress bar, recalculate since it may not be know yet.
-        total = track.len or 10  # avoid div0
-        slot = ux(.060)/ total # 60%
-
-        pygame.draw.rect(screen,(10,10,10),( marginx-ux(10), marginy-uy(10), (total*slot)+ux(20), uy(110) ) )
-        pygame.draw.rect(screen,(0,255,0), ( marginx, marginy, track.pos*slot, uy(90)) )
-
-    # wait until zip mount + overlayfs is complete
-    while not track.ready:
-        pg_bar(track.pos)
-        compose()
-        await asyncio.sleep(.1)
-
-    # fill it up in case it was cached and instant download
-    pg_bar(track.len)
-    compose()
-
-
-    # preloader will change dir and prepend it to sys.path
-    platform.run_main(PyConfig, loaderhome= appdir / "assets", loadermain=None)
-
-
-    # wait preloading complete
-    # that includes images and wasm compilation of bundled modules
-    while embed.counter()<0:
-        await asyncio.sleep(.1)
-
-    main = appdir / "assets" / "main.py"
-
-    # start async top level machinery and add a console.
-    await TopLevel_async_handler.start_toplevel(platform.shell, console=window.python.config.debug)
-
-    # now that apk is mounted we have access to font cache
-    # but we need to fill __file__ that is not yet set
-    __import__(__name__).__file__ = str(main)
-
-
-    # now make a prompt
-    fnt = pygame.sysfont.SysFont("freesans",  uy(80) )
-
-    def ui_callback(pkg, error=None):
-        nonlocal fnt
-        if error:
-            prompt = fnt.render(f"{error}", True, "black")
-        else:
-            prompt = fnt.render(f"Setting [{pkg}] up", True, "black")
-        pg_bar(track.len)
-        screen.blit(prompt, ( marginx+ ux(80), marginy - uy(10) ) )
-        compose()
-
-    # test/wait if user media interaction required
-    if not platform.window.MM.UME:
-
-        # now make a prompt
-        fnt = pygame.sysfont.SysFont("freesans",  uy(80) )
-        prompt = fnt.render("Ready to start !", True, "blue")
-        pg_bar(track.len)
-        screen.blit(prompt, ( marginx+ ux(80), marginy - uy(10) ) )
-        compose()
-        print("""
-        * Waiting for media user engagement : please click/touch page *
-    """)
-        while not platform.window.MM.UME:
-            await asyncio.sleep(.1)
-
-    # cleanup
-    screen.fill( (0,0,0,0) )
-    pygame.display.flip()
-
-    await shell.runpy(main, callback=ui_callback)
-
-
-
-import asyncio
-
-asyncio.run( custom_site() )
-
-
-
-
-
-
-
-
-
-
-
-
-# BEGIN BLOCK
-#
-# now this is the html part you can (and should) customize
-# It is not mandatory : pygame-script when it reads the first line (also called
-# shebang ) of above code create absolute minimal widget set
-# required for running with default rules
-#
-# do not alter that comment block it is separating python code from html code
-# =============================================================================
-# --></script><head><!--
-//=============================================================================
-//
-//
-//
-//
-//
-//
-//
-
-    {%- if cookiecutter.comment != "" -%}
-{{cookiecutter.comment}}
-    {% endif %}
-
---><script type="application/javascript">
-// END BLOCK
-
-
-
-// this dict is available under PyConfig.config from __main__
-
-config = {
-    xtermjs : "1" ,
-    _sdl2 : "canvas",
-    user_canvas : 0,
-    user_canvas_managed : 0,
-    ume_block : 1,
-    can_close : 0,
-    archive : "roborun",
-    gui_debug : 3,
-    cdn : "https://pygame-web.github.io/archives/0.9/",
-    autorun : 0,
-    PYBUILD : "3.12"
-}
-
-</script>
-
-    <title>RoboRun</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="viewport" content="height=device-height, initial-scale=1.0">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes"/>
-
-    <link rel="prefetch" href="https://pygame-web.github.io/archives/0.9/pythonrc.py">
-    <link rel="prefetch" href="https://pygame-web.github.io/archives/0.9/vt/xterm.js">
-    <link rel="prefetch" href="https://pygame-web.github.io/archives/0.9/vt/xterm-addon-image.js">
-    <link rel="prefetch" href="https://pygame-web.github.io/archives/0.9/vt/xterm-addon-image.js">
-
-
-    <link rel="icon" type="image/png" href="favicon.png" sizes="16x16">
-
+    <title>RoboRun - Web Game</title>
     <style>
-        #status {
-            display: inline-block;
-            vertical-align: top;
-            margin-top: 20px;
-            margin-left: 30px;
-            font-weight: bold;
-            color: rgb(120, 120, 120);
-        }
-
-        #progress {
-            height: 20px;
-            width: 300px;
-        }
-
-        div.emscripten { text-align: center; }
-        div.emscripten_border { border: 1px solid black; }
-        div.thick_border { border: 4px solid black; }
-
-        /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
-        /* average size of droid screen 470dp x 320dp  */
-        canvas.emscripten {
-            border: 0px none;
-            background-color: transparent;
-            width: 100%;
-            height: 100%;
-            z-index: 5;
-
+        body {
+            margin: 0;
             padding: 0;
-            margin: 0 auto;
-
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: relative;
+            border: 2px solid #333;
+            background: #000;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: #000;
+        }
+        
+        #startScreen, #gameOverScreen {
             position: absolute;
             top: 0;
-            bottom: 0;
             left: 0;
-            right: 0;
-        }
-
-        body {
-            font-family: arial;
-            margin: 0;
-            padding: none;
-            background-color:powderblue;
-        }
-
-        .topright{
-           position:absolute;
-           top:0px;
-           right:0px;
-        }
-
-        .bottomright {
-            position:absolute;
-            top: 40%;
-            right: 0px;
-        }
-
-        .center {
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
             display: flex;
-            align-items: center;
+            flex-direction: column;
             justify-content: center;
+            align-items: center;
+            text-align: center;
         }
-
-        .trinfo{
-           position:relative;
-           right:0px;
-           border: 1px solid black;
+        
+        #gameOverScreen {
+            display: none;
         }
-
-        .framed{
-           position:relative;
-           top:150px;
-           right:10px;
-           border: 1px solid black;
+        
+        h1 {
+            color: #00ff00;
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        .controls {
+            background: rgba(50, 50, 50, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 1px solid #666;
+        }
+        
+        .controls h3 {
+            color: #00ff00;
+            margin-top: 0;
+        }
+        
+        .controls p {
+            margin: 5px 0;
+            color: #fff;
+        }
+        
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #00cc00;
+        }
+        
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        
+        .loading {
+            color: #ffaa00;
+            font-size: 1.2em;
+            margin: 20px 0;
         }
     </style>
-
-    <script src="https://pygame-web.github.io/archives/0.9//browserfs.min.js"></script>
-
 </head>
-
 <body>
-
-    <div id="transfer" align=center>
-<!--        <div class="spinner" id='spinner'></div> -->
-        <div class="emscripten" id="status">Downloading...</div>
-        <div class="emscripten">
-            <progress value="0" max="100" id="progress"></progress>
-        </div>
-    </div>
-
-
-    <canvas class="emscripten" id="canvas"
-width="1px"
-height="1px"
-    oncontextmenu="event.preventDefault()" tabindex=1>
-    </canvas>
-
-    <div id=html></div>
-
-    <div id=crt  class=bottomright >
-
-        <div id="system" hidden>
-            <div class="button-container">
-                <button id="aiostop" disabled>AIO ⏏︎</button>
-                <button id="aiopaused_true" disabled>AIO ■</button>
-                <button id="aiopaused_false" disabled>AIO ▶</button>
-                <button id="pygame_mixer_music_pause" disabled>Music ■</button>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div id="startScreen">
+            <h1>🤖 RoboRun</h1>
+            <div class="controls">
+                <h3>🎮 Controls</h3>
+                <p>Arrow Keys or WASD - Move</p>
+                <p>Space - Shoot</p>
+                <p>R - Start/Restart</p>
             </div>
-
-            <div class="button-container">
-                <div id=load_min>min</div>
-                <div id=load_avg>avg</div>
-                <div id=load_max>max</div>
-              <button id="load_rst" disabled>RESET</button>
-            </div>
-
-            <div id="level">(battery level unknown)</div>
-            <div id="stateBattery">(charging state unknown)</div>
-
+            <button onclick="startGame()">Start Game</button>
         </div>
-
-        <div id=box class="emscripten_border" hidden=true>
-
-            <div id="info" class="trinfo"></div>
-
-            <iframe id="iframe" class="framed" name="iframe"
-width="470px" height="90%"
-allowtransparency="true"
-style="z-index: 10;"
-style="background: #FFFFFF;"
-frameborder="1"
-                allowfullscreen="true"
-                webkitallowfullscreen="true"
-                msallowfullscreen="true"
-                mozallowfullscreen="true"
-                sandbox="allow-same-origin allow-top-navigation allow-scripts allow-pointer-lock"
-                allow="autoplay; fullscreen *; geolocation; microphone; camera; midi; monetization; xr-spatial-tracking; gamepad; gyroscope; accelerometer; xr; cross-origin-isolated"
-                src="https://pygame-web.github.io/archives/0.9/empty.html"
-                scrolling="yes">
-            </iframe>
+        
+        <div id="gameOverScreen">
+            <h1>Game Over!</h1>
+            <div id="finalScore"></div>
+            <button onclick="restartGame()">Play Again</button>
         </div>
-
+        
+        <div id="score">Score: 0</div>
     </div>
 
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const scoreElement = document.getElementById('score');
+        const finalScoreElement = document.getElementById('finalScore');
 
-    <div id="dlg" hidden>
-        <input type="file" id="dlg_multifile" multiple accept="image/*">
-        <label for="dlg_multifile">Select files</label>
-    </div>
+        // Game variables
+        let gameState = 'start'; // 'start', 'playing', 'gameOver'
+        let score = 0;
+        let player = { x: 400, y: 500, width: 40, height: 40, speed: 5 };
+        let bullets = [];
+        let enemies = [];
+        let coins = [];
+        let keys = {};
 
-    <div id="pyconsole">
-        <div id="terminal" tabIndex=1 align="left"></div>
-    </div>
+        // Game loop
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
 
-    <script type="application/javascript">
+        function update() {
+            if (gameState !== 'playing') return;
 
-    async function custom_onload(debug_hidden) {
-        // this is called before anything python is loaded
-        // make your js customization here
-        console.log(__FILE__, "custom_onload")
+            // Handle player movement
+            if (keys['ArrowLeft'] || keys['KeyA']) player.x -= player.speed;
+            if (keys['ArrowRight'] || keys['KeyD']) player.x += player.speed;
+            if (keys['ArrowUp'] || keys['KeyW']) player.y -= player.speed;
+            if (keys['ArrowDown'] || keys['KeyS']) player.y += player.speed;
 
-        pyconsole.hidden = debug_hidden
-        system.hidden = debug_hidden
-        transfer.hidden = debug_hidden
-        info.hidden = debug_hidden
-        box.hidden =  debug_hidden
+            // Keep player on screen
+            player.x = Math.max(0, Math.min(player.x, canvas.width - player.width));
+            player.y = Math.max(0, Math.min(player.y, canvas.height - player.height));
 
-    }
-
-    function custom_prerun(){
-        // no python main and no (MEMFS + VFS) yet.
-        console.log(__FILE__, "custom_prerun")
-
-    }
-
-    function custom_postrun(){
-        // python main and no VFS filesystem yet.
-        console.log(__FILE__, "custom_postrun")
-
-        // prevent ff horizontal scroll
-        window.addEventListener("keydown", function(e) {
-            if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.code) > -1) {
-                if (!python.config.debug)
-                    e.preventDefault();
+            // Update bullets
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].y -= 8;
+                if (bullets[i].y < 0) {
+                    bullets.splice(i, 1);
+                }
             }
-        }, false);
 
-    }
+            // Update enemies
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                enemies[i].y += 3;
+                if (enemies[i].y > canvas.height) {
+                    enemies.splice(i, 1);
+                }
+            }
 
-    function debug() {
-        // allow to gain access to dev tools from js console
-        // but only on desktop. difficult to reach when in iframe
-        python.config.debug = true
-        custom_onload(false)
-        Module.PyRun_SimpleString("shell.uptime()")
-        window_resize()
-    }
+            // Update coins
+            for (let i = coins.length - 1; i >= 0; i--) {
+                coins[i].y += 2;
+                if (coins[i].y > canvas.height) {
+                    coins.splice(i, 1);
+                }
+            }
 
-    function info_inline(data){
-        document.getElementById("info").innerHTML = data
-    }
+            // Spawn enemies
+            if (Math.random() < 0.02) {
+                enemies.push({
+                    x: Math.random() * (canvas.width - 30),
+                    y: -30,
+                    width: 30,
+                    height: 30
+                });
+            }
 
-    function info_online(url) {
-        // display info about current APK
-        fetch( url /*, options */)
-            .then((response) => response.text())
-            .then((html) => {
-                info_inline(html);
-        })
-        .catch((error) => {
-            console.warn(error);
+            // Spawn coins
+            if (Math.random() < 0.01) {
+                coins.push({
+                    x: Math.random() * (canvas.width - 30) + 15,
+                    y: -30,
+                    radius: 15
+                });
+            }
+
+            // Collision detection - bullets vs enemies
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    if (bullets[i].x < enemies[j].x + enemies[j].width &&
+                        bullets[i].x + 5 > enemies[j].x &&
+                        bullets[i].y < enemies[j].y + enemies[j].height &&
+                        bullets[i].y + 5 > enemies[j].y) {
+                        bullets.splice(i, 1);
+                        enemies.splice(j, 1);
+                        score += 10;
+                        break;
+                    }
+                }
+            }
+
+            // Collision detection - player vs enemies
+            for (let enemy of enemies) {
+                if (player.x < enemy.x + enemy.width &&
+                    player.x + player.width > enemy.x &&
+                    player.y < enemy.y + enemy.height &&
+                    player.y + player.height > enemy.y) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            // Collision detection - player vs coins
+            for (let i = coins.length - 1; i >= 0; i--) {
+                let coin = coins[i];
+                let dx = (player.x + player.width/2) - coin.x;
+                let dy = (player.y + player.height/2) - coin.y;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < coin.radius + 20) {
+                    coins.splice(i, 1);
+                    score += 5;
+                }
+            }
+
+            // Update score display
+            scoreElement.textContent = `Score: ${score}`;
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (gameState === 'playing') {
+                // Draw stars background
+                ctx.fillStyle = '#fff';
+                for (let i = 0; i < 100; i++) {
+                    let x = (i * 37) % canvas.width;
+                    let y = (i * 23) % canvas.height;
+                    ctx.fillRect(x, y, 1, 1);
+                }
+
+                // Draw player
+                ctx.fillStyle = '#00ff00';
+                ctx.fillRect(player.x, player.y, player.width, player.height);
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(player.x, player.y, player.width, player.height);
+
+                // Draw bullets
+                ctx.fillStyle = '#ffff00';
+                for (let bullet of bullets) {
+                    ctx.beginPath();
+                    ctx.arc(bullet.x, bullet.y, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Draw enemies
+                ctx.fillStyle = '#ff0000';
+                for (let enemy of enemies) {
+                    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                }
+
+                // Draw coins
+                ctx.fillStyle = '#ffff00';
+                for (let coin of coins) {
+                    ctx.beginPath();
+                    ctx.arc(coin.x, coin.y, coin.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function startGame() {
+            gameState = 'playing';
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            score = 0;
+            player = { x: 400, y: 500, width: 40, height: 40, speed: 5 };
+            bullets = [];
+            enemies = [];
+            coins = [];
+        }
+
+        function restartGame() {
+            startGame();
+        }
+
+        function gameOver() {
+            gameState = 'gameOver';
+            gameOverScreen.style.display = 'flex';
+            finalScoreElement.textContent = `Final Score: ${score}`;
+        }
+
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            
+            if (e.code === 'Space' && gameState === 'playing') {
+                bullets.push({
+                    x: player.x + player.width/2,
+                    y: player.y
+                });
+                e.preventDefault();
+            }
+            
+            if (e.code === 'KeyR') {
+                if (gameState === 'start') {
+                    startGame();
+                } else if (gameState === 'gameOver') {
+                    restartGame();
+                }
+            }
         });
-    }
 
-    function frame_online(url) {
-        window.frames["iframe"].location = url;
-    }
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
 
+        // Start the game loop
+        gameLoop();
     </script>
-
 </body>
 </html>
