@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoboRun - Web Edition</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #141414;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #game-canvas {
+            display: block;
+            border: 2px solid #333;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00ff00;
+            font-size: 24px;
+            text-align: center;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            backdrop-filter: blur(10px);
+        }
+        
+        #title {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ff00;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        @media (max-width: 768px) {
+            #controls {
+                font-size: 12px;
+                bottom: 10px;
+                left: 10px;
+                padding: 10px;
+            }
+            
+            #title {
+                font-size: 24px;
+            }
+            
+            #loading {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="title">RoboRun</div>
+        <div id="loading">Loading RoboRun...</div>
+        <canvas id="game-canvas" width="960" height="720"></canvas>
+        <div id="controls">
+            <strong>🎮 Controls:</strong><br>
+            Arrow Keys or WASD - Move<br>
+            Space - Shoot (when powerup active)<br>
+            R - Start/Restart<br>
+            ESC - Pause
+        </div>
+    </div>
+    
+    <script>
+        console.log("RoboRun Web Edition - Loading...");
+        
+        // Responsive canvas sizing
+        function resizeCanvas() {
+            const canvas = document.getElementById('game-canvas');
+            const container = document.getElementById('game-container');
+            
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            
+            const aspectRatio = 960 / 720;
+            
+            let canvasWidth = containerWidth;
+            let canvasHeight = containerWidth / aspectRatio;
+            
+            if (canvasHeight > containerHeight) {
+                canvasHeight = containerHeight;
+                canvasWidth = containerHeight * aspectRatio;
+            }
+            
+            canvas.style.width = canvasWidth + 'px';
+            canvas.style.height = canvasHeight + 'px';
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // Hide loading when game starts
+        setTimeout(() => {
+            const loading = document.getElementById('loading');
+            if (loading) {
+                loading.style.display = 'none';
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
