@@ -1,228 +1,381 @@
-#!/usr/bin/env python3
-"""
-Web-optimized version of RoboRun for Pygbag deployment.
-This version includes responsive scaling and web-specific optimizations.
-"""
-
 import pygame
-import random
 import sys
-import math
 import os
-from PIL import Image, ImageSequence
+import random
+import math
 
-# Use the current working directory for asset loading
-ASSET_DIR = os.getcwd()
-
+# Initialize Pygame
 pygame.init()
 
-# Base virtual resolution - optimized for web
-BASE_WIDTH, BASE_HEIGHT = 1024, 768
+# Web-optimized settings
+BASE_WIDTH, BASE_HEIGHT = 800, 600
 FPS = 60
 
-# For web deployment, we'll use responsive scaling
-# Get screen resolution (will be browser window size)
-screen_info = pygame.display.Info()
-SCREEN_WIDTH = screen_info.current_w
-SCREEN_HEIGHT = screen_info.current_h
+# Colors
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
+BLUE = (0, 0, 255)
+YELLOW = (255, 255, 0)
+GRAY = (128, 128, 128)
+DARK_GRAY = (64, 64, 64)
 
-# Calculate scaling factors for responsive design
-SCALE_X = SCREEN_WIDTH / BASE_WIDTH
-SCALE_Y = SCREEN_HEIGHT / BASE_HEIGHT
-SCALE = min(SCALE_X, SCALE_Y)  # Maintain aspect ratio
+# Game settings
+PLAYER_SPEED = 5
+BULLET_SPEED = 10
+OBSTACLE_SPEED = 3
+COIN_RADIUS = 15
+POWERUP_SIZE = 45
 
-# Calculate actual window size
-WINDOW_WIDTH = int(BASE_WIDTH * SCALE)
-WINDOW_HEIGHT = int(BASE_HEIGHT * SCALE)
-
-# Calculate centering offsets
-LETTERBOX_X = (SCREEN_WIDTH - WINDOW_WIDTH) // 2
-LETTERBOX_Y = (SCREEN_HEIGHT - WINDOW_HEIGHT) // 2
-
-# Use base resolution for all game logic
-WIDTH, HEIGHT = BASE_WIDTH, BASE_HEIGHT
-
-PLAYER_WIDTH, PLAYER_HEIGHT = 50, 50
-OBSTACLE_MIN_SIZE = 30
-OBSTACLE_MAX_SIZE = 70
-COIN_RADIUS = 10
-CHECKPOINT_DISTANCE = 400
-MIN_GAP_SIZE = 120
-
-WHITE = (255,255,255)
-RED = (255,0,0)
-YELLOW = (255,255,0)
-GREEN = (0,255,0)
-BLUE = (0,0,255)
-BLACK = (0,0,0)
-MAGENTA = (255,0,255)
-GREY = (100,100,100)
-ORANGE = (255,165,0)
-DARK_GREY = (30, 30, 30)
-LIGHT_GREY = (200, 200, 200)
-
-# Create the display window
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SCALED)
-pygame.display.set_caption("RoboRun - Web Edition")
-clock = pygame.time.Clock()
-
-# Create virtual surface for rendering at base resolution
-virtual_surface = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
-
-def scale_coords_to_virtual(screen_x, screen_y):
-    """Convert screen coordinates to virtual coordinates
-    Use this function when handling mouse input to convert screen coordinates
-    to the virtual coordinate system used by the game logic.
-    """
-    # Remove letterbox offset
-    virtual_x = (screen_x - LETTERBOX_X) / SCALE
-    virtual_y = (screen_y - LETTERBOX_Y) / SCALE
-    return int(virtual_x), int(virtual_y)
-
-def scale_coords_to_screen(virtual_x, virtual_y):
-    """Convert virtual coordinates to screen coordinates"""
-    screen_x = int(virtual_x * SCALE + LETTERBOX_X)
-    screen_y = int(virtual_y * SCALE + LETTERBOX_Y)
-    return screen_x, screen_y
-
-def render_to_screen():
-    """Scale the virtual surface to screen with responsive scaling"""
-    # Clear the screen
-    screen.fill(BLACK)
-    
-    # Scale the virtual surface to fill the screen while maintaining aspect ratio
-    scaled_surface = pygame.transform.smoothscale(virtual_surface, (WINDOW_WIDTH, WINDOW_HEIGHT))
-    
-    # Center the scaled surface on the screen
-    screen.blit(scaled_surface, (LETTERBOX_X, LETTERBOX_Y))
-
+# Asset loading function
 def load_image(name, scale=1):
+    """Load and scale an image"""
     try:
         image = pygame.image.load(name)
         if scale != 1:
-            # Scale based on the virtual resolution scaling
-            final_scale = scale * SCALE
-            image = pygame.transform.scale(image, 
-                (int(image.get_width() * final_scale), int(image.get_height() * final_scale)))
+            width = int(image.get_width() * scale)
+            height = int(image.get_height() * scale)
+            image = pygame.transform.scale(image, (width, height))
         return image
-    except Exception as e:
-        print(f"Error loading image {name}: {e}")
-        return None
+    except pygame.error:
+        # Create a colored rectangle as fallback
+        surface = pygame.Surface((32, 32))
+        surface.fill(RED if "enemy" in name else YELLOW if "coin" in name else BLUE)
+        return surface
 
 def load_gif_frames(gif_path, target_width=None):
+    """Load GIF frames for animation"""
     try:
-        gif = Image.open(gif_path)
+        # For web, we'll create simple colored rectangles
         frames = []
-        for frame in ImageSequence.Iterator(gif):
-            if frame.mode != 'RGBA':
-                frame = frame.convert('RGBA')
-            frame_surface = pygame.image.fromstring(
-                frame.tobytes(), frame.size, frame.mode)
-            
-            if target_width:
-                # Scale based on the virtual resolution scaling
-                scale = (target_width * SCALE) / frame_surface.get_width()
-                new_size = (int(frame_surface.get_width() * scale),
-                          int(frame_surface.get_height() * scale))
-                frame_surface = pygame.transform.scale(frame_surface, new_size)
-            
-            frames.append(frame_surface)
+        colors = [RED, GREEN, BLUE, YELLOW]
+        for i in range(4):
+            surface = pygame.Surface((32, 32))
+            surface.fill(colors[i])
+            frames.append(surface)
         return frames
-    except Exception as e:
-        print(f"Error loading GIF {gif_path}: {e}")
-        return None
+    except:
+        return [pygame.Surface((32, 32))]
 
-# Load fonts with scaling
-try:
-    font = pygame.font.Font(None, int(36 * SCALE))
-    small_font = pygame.font.Font(None, int(24 * SCALE))
-except:
-    font = pygame.font.SysFont(None, int(36 * SCALE))
-    small_font = pygame.font.SysFont(None, int(24 * SCALE))
+# Animation class
+class Animation:
+    def __init__(self, frames, frame_duration=100):
+        self.frames = frames
+        self.frame_duration = frame_duration
+        self.current_frame = 0
+        self.last_update = pygame.time.get_ticks()
+    
+    def update(self):
+        now = pygame.time.get_ticks()
+        if now - self.last_update > self.frame_duration:
+            self.current_frame = (self.current_frame + 1) % len(self.frames)
+            self.last_update = now
+    
+    def get_current_frame(self):
+        return self.frames[self.current_frame]
 
-# Load assets with scaling
-try:
-    player_image = pygame.image.load(os.path.join(ASSET_DIR, "robo.gif")).convert_alpha()
-    player_image = pygame.transform.scale(player_image, (int(PLAYER_WIDTH * SCALE), int(PLAYER_HEIGHT * SCALE)))
-    enemy_image = pygame.image.load(os.path.join(ASSET_DIR, "enemy.gif")).convert_alpha()
-    coin_sprite = load_image(os.path.join(ASSET_DIR, "coin.png"), 0.3)
-    powerup_sprites = {
-        'invincibility': load_image(os.path.join(ASSET_DIR, "invincibility.png"), 0.3),
-        'magnet': load_image(os.path.join(ASSET_DIR, "magnet.png"), 0.3)
-    }
-except:
-    player_image = None
-    enemy_image = None
-    coin_sprite = None
-    powerup_sprites = None
+# Background class
+class Background:
+    def __init__(self):
+        self.stars = []
+        for _ in range(100):
+            x = random.randint(0, BASE_WIDTH)
+            y = random.randint(0, BASE_HEIGHT)
+            self.stars.append((x, y))
+    
+    def draw(self, surface, scroll_speed=0):
+        surface.fill(BLACK)
+        for x, y in self.stars:
+            pygame.draw.circle(surface, WHITE, (x, y - scroll_speed), 1)
 
-high_score = 0
+# Player class
+class Player:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.width = 40
+        self.height = 40
+        self.speed = PLAYER_SPEED
+        self.rect = pygame.Rect(x, y, self.width, self.height)
+        self.animation = Animation(load_gif_frames("robo.gif"))
+    
+    def move(self, keys):
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+            self.x -= self.speed
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+            self.x += self.speed
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
+            self.y -= self.speed
+        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
+            self.y += self.speed
+        
+        # Keep player on screen
+        self.x = max(0, min(self.x, BASE_WIDTH - self.width))
+        self.y = max(0, min(self.y, BASE_HEIGHT - self.height))
+        
+        self.rect.x = self.x
+        self.rect.y = self.y
+    
+    def draw(self, surface):
+        pygame.draw.rect(surface, GREEN, self.rect)
+        pygame.draw.rect(surface, WHITE, self.rect, 2)
 
-# Import all the game classes and functions from the main file
-# This is a simplified version for web deployment
-# The full implementation would include all the classes from main.py
+# Bullet class
+class Bullet:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.radius = 5
+        self.speed = BULLET_SPEED
+        self.active = True
+    
+    def update(self):
+        self.y -= self.speed
+        if self.y < 0:
+            self.active = False
+    
+    def draw(self, surface):
+        pygame.draw.circle(surface, YELLOW, (int(self.x), int(self.y)), self.radius)
 
-def start_screen():
-    """Display the start screen with title, controls, and instructions"""
-    while True:
-        virtual_surface.fill(BLACK)
-        
-        # Title
-        title_font = pygame.font.Font(None, int(72 * SCALE))
-        title_text = title_font.render("RoboRun", True, WHITE)
-        title_rect = title_text.get_rect(center=(WIDTH//2, HEIGHT//4))
-        virtual_surface.blit(title_text, title_rect)
-        
-        # Controls
-        controls_text = [
-            "Controls:",
-            "Arrow Keys or WASD - Move",
-            "SPACE - Shoot (when powerup active)",
-            "ESC - Pause"
-        ]
-        
-        y_offset = HEIGHT//2 - 60
-        for i, text in enumerate(controls_text):
-            color = YELLOW if i == 0 else WHITE
-            font_size = int(36 * SCALE) if i == 0 else int(28 * SCALE)
-            text_surface = pygame.font.Font(None, font_size).render(text, True, color)
-            text_rect = text_surface.get_rect(center=(WIDTH//2, y_offset + i * 35))
-            virtual_surface.blit(text_surface, text_rect)
-        
-        # Instructions
-        instruction_font = pygame.font.Font(None, int(48 * SCALE))
-        instruction_text = instruction_font.render("Press R to Play", True, GREEN)
-        instruction_rect = instruction_text.get_rect(center=(WIDTH//2, HEIGHT - 100))
-        virtual_surface.blit(instruction_text, instruction_rect)
-        
-        # High score
-        if high_score > 0:
-            high_score_text = pygame.font.Font(None, int(32 * SCALE)).render(f"High Score: {high_score}", True, GREY)
-            high_score_rect = high_score_text.get_rect(center=(WIDTH//2, HEIGHT - 50))
-            virtual_surface.blit(high_score_text, high_score_rect)
-        
-        render_to_screen()
-        pygame.display.flip()
-        
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_r:
-                    return
-                elif event.key == pygame.K_q:
-                    pygame.quit()
-                    sys.exit()
+# Obstacle class
+class Obstacle:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.width = 30
+        self.height = 30
+        self.speed = OBSTACLE_SPEED
+        self.rect = pygame.Rect(x, y, self.width, self.height)
+        self.animation = Animation(load_gif_frames("enemy.gif"))
+    
+    def update(self):
+        self.y += self.speed
+        self.rect.y = self.y
+    
+    def draw(self, surface):
+        pygame.draw.rect(surface, RED, self.rect)
+        pygame.draw.rect(surface, WHITE, self.rect, 2)
+
+# Coin class
+class Coin:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.radius = COIN_RADIUS
+        self.collected = False
+    
+    def draw(self, surface):
+        if not self.collected:
+            pygame.draw.circle(surface, YELLOW, (int(self.x), int(self.y)), self.radius)
+            pygame.draw.circle(surface, WHITE, (int(self.x), int(self.y)), self.radius, 2)
+
+# PowerUp class
+class PowerUp:
+    def __init__(self, x, y, power_type):
+        self.x = x
+        self.y = y
+        self.power_type = power_type
+        self.size = POWERUP_SIZE
+        self.rect = pygame.Rect(x, y, self.size, self.size)
+        self.collected = False
+    
+    def draw(self, surface):
+        if not self.collected:
+            color = BLUE if self.power_type == "invincibility" else GREEN
+            pygame.draw.rect(surface, color, self.rect)
+            pygame.draw.rect(surface, WHITE, self.rect, 2)
+
+# Game state
+class GameState:
+    START_SCREEN = "start"
+    PLAYING = "playing"
+    PAUSED = "paused"
+    GAME_OVER = "game_over"
+
+def start_screen(surface, font_large, font_small):
+    surface.fill(BLACK)
+    
+    # Title
+    title_text = font_large.render("RoboRun", True, GREEN)
+    title_rect = title_text.get_rect(center=(BASE_WIDTH//2, BASE_HEIGHT//2 - 100))
+    surface.blit(title_text, title_rect)
+    
+    # Controls
+    controls_bg = pygame.Rect(50, BASE_HEIGHT//2 - 50, 300, 150)
+    pygame.draw.rect(surface, DARK_GRAY, controls_bg)
+    pygame.draw.rect(surface, WHITE, controls_bg, 2)
+    
+    controls_text = font_small.render("Controls:", True, WHITE)
+    surface.blit(controls_text, (60, BASE_HEIGHT//2 - 40))
+    
+    controls = [
+        "Arrow Keys or WASD - Move",
+        "Space - Shoot",
+        "R - Start/Restart",
+        "ESC - Pause"
+    ]
+    
+    for i, control in enumerate(controls):
+        text = font_small.render(control, True, WHITE)
+        surface.blit(text, (60, BASE_HEIGHT//2 - 20 + i * 20))
+    
+    # Start instruction
+    start_text = font_small.render("Press R to Start!", True, YELLOW)
+    start_rect = start_text.get_rect(center=(BASE_WIDTH//2, BASE_HEIGHT//2 + 100))
+    surface.blit(start_text, start_rect)
+
+def game_over_screen(surface, font_large, font_small, score):
+    surface.fill(BLACK)
+    
+    game_over_text = font_large.render("Game Over!", True, RED)
+    game_over_rect = game_over_text.get_rect(center=(BASE_WIDTH//2, BASE_HEIGHT//2 - 50))
+    surface.blit(game_over_text, game_over_rect)
+    
+    score_text = font_small.render(f"Score: {score}", True, WHITE)
+    score_rect = score_text.get_rect(center=(BASE_WIDTH//2, BASE_HEIGHT//2))
+    surface.blit(score_text, score_rect)
+    
+    restart_text = font_small.render("Press R to Restart", True, YELLOW)
+    restart_rect = restart_text.get_rect(center=(BASE_WIDTH//2, BASE_HEIGHT//2 + 50))
+    surface.blit(restart_text, restart_rect)
 
 def main():
-    """Main function for web deployment"""
-    # Show start screen
-    start_screen()
+    # Set up display
+    screen = pygame.display.set_mode((BASE_WIDTH, BASE_HEIGHT))
+    pygame.display.set_caption("RoboRun")
+    clock = pygame.time.Clock()
     
-    # For now, just show a placeholder
-    # In a full implementation, this would run the complete game
-    print("Game would start here in full implementation")
+    # Fonts
+    font_large = pygame.font.Font(None, 48)
+    font_small = pygame.font.Font(None, 24)
+    
+    # Game objects
+    background = Background()
+    player = Player(BASE_WIDTH//2, BASE_HEIGHT - 100)
+    bullets = []
+    obstacles = []
+    coins = []
+    powerups = []
+    
+    # Game state
+    game_state = GameState.START_SCREEN
+    score = 0
+    distance_travelled = 0
+    
+    # Game loop
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    if game_state == GameState.START_SCREEN:
+                        game_state = GameState.PLAYING
+                    elif game_state == GameState.GAME_OVER:
+                        # Reset game
+                        game_state = GameState.PLAYING
+                        score = 0
+                        distance_travelled = 0
+                        bullets = []
+                        obstacles = []
+                        coins = []
+                        powerups = []
+                        player = Player(BASE_WIDTH//2, BASE_HEIGHT - 100)
+                elif event.key == pygame.K_ESCAPE:
+                    if game_state == GameState.PLAYING:
+                        game_state = GameState.PAUSED
+                    elif game_state == GameState.PAUSED:
+                        game_state = GameState.PLAYING
+                elif event.key == pygame.K_SPACE and game_state == GameState.PLAYING:
+                    bullets.append(Bullet(player.x + player.width//2, player.y))
+        
+        # Update game
+        if game_state == GameState.PLAYING:
+            keys = pygame.key.get_pressed()
+            player.move(keys)
+            
+            # Update bullets
+            for bullet in bullets[:]:
+                bullet.update()
+                if not bullet.active:
+                    bullets.remove(bullet)
+            
+            # Update obstacles
+            for obstacle in obstacles[:]:
+                obstacle.update()
+                if obstacle.y > BASE_HEIGHT:
+                    obstacles.remove(obstacle)
+            
+            # Update coins
+            for coin in coins:
+                coin.draw(screen)
+            
+            # Update powerups
+            for powerup in powerups:
+                powerup.draw(screen)
+            
+            # Spawn obstacles
+            if random.randint(1, 60) == 1:
+                obstacles.append(Obstacle(random.randint(0, BASE_WIDTH - 30), -30))
+            
+            # Spawn coins
+            if random.randint(1, 120) == 1:
+                coins.append(Coin(random.randint(50, BASE_WIDTH - 50), -30))
+            
+            # Collision detection
+            for bullet in bullets[:]:
+                for obstacle in obstacles[:]:
+                    if (abs(bullet.x - obstacle.x) < 20 and 
+                        abs(bullet.y - obstacle.y) < 20):
+                        bullets.remove(bullet)
+                        obstacles.remove(obstacle)
+                        score += 10
+            
+            # Player collision with obstacles
+            for obstacle in obstacles:
+                if player.rect.colliderect(obstacle.rect):
+                    game_state = GameState.GAME_OVER
+            
+            # Player collision with coins
+            for coin in coins[:]:
+                if (abs(player.x - coin.x) < 30 and 
+                    abs(player.y - coin.y) < 30):
+                    coins.remove(coin)
+                    score += 5
+        
+        # Draw everything
+        background.draw(screen, distance_travelled)
+        
+        if game_state == GameState.START_SCREEN:
+            start_screen(screen, font_large, font_small)
+        elif game_state == GameState.PLAYING:
+            player.draw(screen)
+            for bullet in bullets:
+                bullet.draw(screen)
+            for obstacle in obstacles:
+                obstacle.draw(screen)
+            for coin in coins:
+                coin.draw(screen)
+            for powerup in powerups:
+                powerup.draw(screen)
+            
+            # Draw score
+            score_text = font_small.render(f"Score: {score}", True, WHITE)
+            screen.blit(score_text, (10, 10))
+        elif game_state == GameState.PAUSED:
+            pause_text = font_large.render("PAUSED", True, YELLOW)
+            pause_rect = pause_text.get_rect(center=(BASE_WIDTH//2, BASE_HEIGHT//2))
+            screen.blit(pause_text, pause_rect)
+        elif game_state == GameState.GAME_OVER:
+            game_over_screen(screen, font_large, font_small, score)
+        
+        pygame.display.flip()
+        clock.tick(FPS)
+    
+    pygame.quit()
+    sys.exit()
 
 if __name__ == "__main__":
     main()
