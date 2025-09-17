@@ -452,12 +452,8 @@
     if (state === 'start') return; // UI only
 
     if (state === 'playing') {
-      // Pause handling
-      if (keys.has('escape')) {
-        if (!paused) { paused = true; showPause(); }
-      }
+      // Pause handling (toggled in keydown handler below)
       if (paused) {
-        if (!keys.has('escape')){} // wait for release
         if (keys.has('q')) { quitToStart(); return; }
         return;
       }
@@ -620,11 +616,11 @@
   // Pause toggle and quit handling separate from main loop for responsiveness
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
-    if (state === 'playing' && k === 'escape') {
-      if (!paused) { paused = true; showPause(); }
-      else { paused = false; hideAllPanels(); }
+    if (k === 'escape') {
+      paused = !paused;
+      if (paused) showPause(); else hideAllPanels();
     }
-    if (state === 'paused' && k === 'q') {
+    if (paused && k === 'q') {
       quitToStart();
     }
   });
