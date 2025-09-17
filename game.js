@@ -249,8 +249,15 @@
   class Coin {
     constructor(x, y) {
       this.x = x; this.y = y; this.collected = false; this.radius = 10;
+      this.vx = 0; this.vy = 0;
     }
-    update(speed) { this.y += speed; }
+    update(speed) {
+      // world scroll
+      this.y += speed;
+      // apply magnetic velocity with damping for smoothness
+      this.x += this.vx; this.y += this.vy;
+      this.vx *= 0.90; this.vy *= 0.90;
+    }
     draw() {
       if (this.collected) return;
       ctx.fillStyle = YELLOW; ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
@@ -296,11 +303,11 @@
   // Enemy disintegration particles
   class Disintegration {
     constructor(x, y, w = 120, h = 120) {
-      const count = 28; // cap for performance
+      const count = 32; // closer to desktop feel
       this.particles = [];
       for (let i = 0; i < count; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = 3 + Math.random() * 5;
+        const speed = 3.5 + Math.random() * 5.5;
         const ox = x + (Math.random() - 0.5) * (w * 0.6);
         const oy = y + (Math.random() - 0.5) * (h * 0.6);
         this.particles.push({
@@ -308,8 +315,8 @@
           y: oy,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          life: 36 + Math.floor(Math.random() * 18),
-          size: 3 + Math.floor(Math.random() * 3),
+          life: 42 + Math.floor(Math.random() * 22),
+          size: 3 + Math.floor(Math.random() * 4),
           r: 160 + Math.floor(Math.random() * 80),
           g: 100 + Math.floor(Math.random() * 80),
           b: 255
@@ -323,7 +330,7 @@
         if (p.life <= 0) continue;
         p.x += p.vx;
         p.y += p.vy;
-        p.vy += 0.12; // slight gravity
+        p.vy += 0.10; // subtle gravity, closer to desktop
         p.life--;
         if (p.life > 0) alive++;
       }
@@ -332,7 +339,7 @@
     draw() {
       for (const p of this.particles) {
         if (p.life <= 0) continue;
-        const alpha = Math.max(0.05, p.life / 40);
+        const alpha = Math.max(0.05, p.life / 50);
         ctx.fillStyle = `rgba(${p.r}, ${p.g}, ${p.b}, ${alpha})`;
         ctx.fillRect(p.x, p.y, p.size, p.size);
       }
@@ -566,13 +573,21 @@
           const py = player.y + player.height/2;
           const dx = px - c.x; const dy = py - c.y;
           const dist = Math.hypot(dx, dy);
-          const attractRadius = 220;
+          const attractRadius = Math.hypot(BASE_WIDTH, BASE_HEIGHT); // screen-wide suction
           if (dist < attractRadius) {
             const normX = dx / (dist || 1);
             const normY = dy / (dist || 1);
-            const strength = Math.max(4, 12 * (1 - dist / attractRadius));
-            c.x += normX * strength;
-            c.y += normY * strength;
+            // Smooth suction: velocity target scales with distance, clamped
+            const maxSpeed = 18;
+            const base = 4 + 24 * (1 - Math.min(dist / attractRadius, 1));
+            const targetVx = normX * base;
+            const targetVy = normY * base;
+            // lerp velocity for smoothness
+            c.vx += (targetVx - c.vx) * 0.35;
+            c.vy += (targetVy - c.vy) * 0.35;
+            // clamp velocity
+            const vMag = Math.hypot(c.vx, c.vy);
+            if (vMag > maxSpeed) { c.vx = (c.vx / vMag) * maxSpeed; c.vy = (c.vy / vMag) * maxSpeed; }
           }
         }
         c.draw();
