@@ -1,103 +1,47 @@
-# RoboRun - Web Edition
+# RoboRun
 
-A fast-paced endless runner game built with Pygame, optimized for web deployment.
+Desktop (pygame) and Browser (HTML5 Canvas) builds.
 
-## 🎮 Game Features
+## Desktop (keep main.py unchanged)
 
-- **Dynamic Scaling**: Automatically adapts to any screen size
-- **Responsive Design**: Works on desktop, tablet, and mobile devices
-- **Dual Controls**: Arrow keys or WASD for movement
-- **Power-ups**: Invincibility, magnet, and bullet power-ups
-- **Smooth Animations**: Pixel-perfect scaling with smooth animations
-- **Start Screen**: Professional start screen with controls and instructions
+- Requires Python 3.10+
+- Install deps:
+  ```bash
+  pip install -r requirements.txt
+  ```
+- Run:
+  ```bash
+  python main.py
+  ```
 
-## 🕹️ Controls
+## Browser (no build tools required)
 
-- **Movement**: Arrow Keys or WASD
-- **Shoot**: Space (when powerup is active)
-- **Pause**: Escape
-- **Start/Restart**: R
-- **Quit**: Q
+- Files: `index.html`, `style.css`, `game.js`.
+- Controls:
+  - Arrow Keys or WASD — Move
+  - SPACE — Shoot (when powerup active)
+  - ESC — Pause
+  - Q — Quit to Start (from Pause)
+  - R — Start from Start screen, or Restart from Game Over
+  - F — Toggle Fullscreen (Browser Only)
+- Start screen shows “RoboRun”, controls, and “Press R to Play”.
+- Game Over: Press R to restart directly (skips start screen).
+- Pause: shows “Press Q to Quit” and a Quit button.
+- Rendering: virtual resolution 960×720 with aspect-preserving scaling, centered.
 
-## 🚀 Web Deployment
+### Local test
 
-This game is designed to run in web browsers using Pygbag. The game automatically scales to fit any browser window size while maintaining aspect ratio.
-
-### Local Development
-
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. Run the game locally:
-   ```bash
-   python main.py
-   ```
-
-3. Build for web:
-   ```bash
-   python build_web.py
-   ```
-
-### GitHub Pages Deployment
-
-The game is automatically deployed to GitHub Pages when pushed to the main branch. The web version will be available at:
-`https://[your-username].github.io/roborun/`
-
-## 🎯 Gameplay
-
-- Control your robot character to avoid obstacles
-- Collect coins to increase your score
-- Use power-ups strategically:
-  - **Invincibility**: Makes you invulnerable and increases speed
-  - **Magnet**: Attracts nearby coins
-  - **Bullet**: Shoot obstacles to clear your path
-- Survive as long as possible to achieve a high score!
-
-## 🛠️ Technical Details
-
-- **Engine**: Pygame 2.5.2
-- **Web Deployment**: Pygbag
-- **Resolution**: 1024x768 base resolution with responsive scaling
-- **Framerate**: 60 FPS
-- **Browser Support**: Modern browsers with WebAssembly support
-
-## 📁 Project Structure
-
-```
-roborun/
-├── main.py              # Main game file
-├── web_main.py          # Web-optimized version
-├── build_web.py         # Web build script
-├── requirements.txt     # Python dependencies
-├── .github/workflows/   # GitHub Actions for deployment
-├── robo.gif            # Player character sprite
-├── enemy.gif           # Enemy sprite
-└── README.md           # This file
+Open a local static server from this folder and visit `http://localhost:8000/`:
+```bash
+python -m http.server 8000
 ```
 
-## 🎨 Visual Design
+### Deploy to GitHub Pages
 
-The game features a clean, pixel-art style with:
-- Smooth scaling that preserves pixel-perfect graphics
-- Responsive design that works on all screen sizes
-- Professional UI with clear instructions
-- Consistent visual scaling across devices
+1. Create a new GitHub repo and push this folder (root contains `index.html`).
+2. Enable Pages: Settings → Pages → Deploy from branch → `main` branch, `/ (root)`.
+3. Wait for the Pages URL to become active; open it to play.
 
-## 🚀 Quick Start
-
-1. Clone this repository
-2. Install dependencies: `pip install -r requirements.txt`
-3. Run the game: `python main.py`
-4. Press R to start playing!
-
-## 🌐 Web Version
-
-The web version automatically:
-- Detects browser window size
-- Scales the game to fit perfectly
-- Maintains aspect ratio
-- Works on desktop and mobile devices
-
-Enjoy playing RoboRun! 🎮
+## Notes
+- The web build mirrors the desktop gameplay and feel, including player/enemy, lasers, coins, powerups (invincibility/magnet/bullet), scoring, distance, speed scaling.
+- The desktop build remains unchanged in `main.py`.
