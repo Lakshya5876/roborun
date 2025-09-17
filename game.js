@@ -37,8 +37,8 @@
     letterboxY = Math.floor((vh - hh) / 2);
     canvas.style.width = `${ww}px`;
     canvas.style.height = `${hh}px`;
-    canvas.style.transform = `translate(${letterboxX}px, ${letterboxY}px)`;
-    canvas.style.position = 'absolute';
+    canvas.style.transform = '';
+    canvas.style.position = '';
     canvas.width = BASE_WIDTH;
     canvas.height = BASE_HEIGHT;
   }
