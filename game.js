@@ -549,6 +549,14 @@
       // Obstacles
       for (const o of obstacles) { o.update(scrollSpeed); o.draw(); }
 
+      // Disintegration particles
+      for (let i = explosions.length - 1; i >= 0; i--) {
+        const ex = explosions[i];
+        ex.update();
+        ex.draw();
+        if (ex.done) explosions.splice(i, 1);
+      }
+
       // Coins
       for (const c of coins) {
         c.update(scrollSpeed);
