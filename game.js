@@ -293,6 +293,56 @@
 
   function rectsOverlap(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
 
+  // Enemy disintegration particles
+  class Disintegration {
+    constructor(x, y, w = 120, h = 120) {
+      const count = 28; // cap for performance
+      this.particles = [];
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 3 + Math.random() * 5;
+        const ox = x + (Math.random() - 0.5) * (w * 0.6);
+        const oy = y + (Math.random() - 0.5) * (h * 0.6);
+        this.particles.push({
+          x: ox,
+          y: oy,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 36 + Math.floor(Math.random() * 18),
+          size: 3 + Math.floor(Math.random() * 3),
+          r: 160 + Math.floor(Math.random() * 80),
+          g: 100 + Math.floor(Math.random() * 80),
+          b: 255
+        });
+      }
+      this.done = false;
+    }
+    update() {
+      let alive = 0;
+      for (const p of this.particles) {
+        if (p.life <= 0) continue;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.12; // slight gravity
+        p.life--;
+        if (p.life > 0) alive++;
+      }
+      if (alive === 0) this.done = true;
+    }
+    draw() {
+      for (const p of this.particles) {
+        if (p.life <= 0) continue;
+        const alpha = Math.max(0.05, p.life / 40);
+        ctx.fillStyle = `rgba(${p.r}, ${p.g}, ${p.b}, ${alpha})`;
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+      }
+    }
+  }
+
+  function spawnDisintegration(x, y, w, h) {
+    explosions.push(new Disintegration(x, y, w, h));
+  }
+
   function findSafePos(w, h, objects, tries=10) {
     for (let i=0;i<tries;i++) {
       const x = Math.floor(Math.random() * (BASE_WIDTH - w));
@@ -487,7 +537,12 @@
         const b = bullets[i]; b.update(); b.draw();
         for (let j=obstacles.length-1;j>=0;j--) {
           const o = obstacles[j];
-          if (rectsOverlap(b.rect(), o.hitbox)) { obstacles.splice(j,1); bullets.splice(i,1); break; }
+          if (rectsOverlap(b.rect(), o.hitbox)) {
+            const cx = o.x + o.width/2, cy = o.y + o.height/2;
+            spawnDisintegration(cx, cy, o.width, o.height);
+            obstacles.splice(j,1); bullets.splice(i,1);
+            break;
+          }
         }
         if (!b.active) bullets.splice(i,1);
       }
@@ -502,9 +557,19 @@
       for (const c of coins) {
         c.update(scrollSpeed);
         if (!c.collected && rectsOverlap(c.rect(), player.hitbox())) { c.collected = true; player.coins++; }
-        if (player.magnet && !c.collected && Math.abs(c.x - (player.x + player.width/2)) < 100) {
-          c.x += Math.sign((player.x + player.width/2) - c.x) * 5;
-          c.y += Math.sign((player.y + player.height/2) - c.y) * 5;
+        if (player.magnet && !c.collected) {
+          const px = player.x + player.width/2;
+          const py = player.y + player.height/2;
+          const dx = px - c.x; const dy = py - c.y;
+          const dist = Math.hypot(dx, dy);
+          const attractRadius = 220;
+          if (dist < attractRadius) {
+            const normX = dx / (dist || 1);
+            const normY = dy / (dist || 1);
+            const strength = Math.max(4, 12 * (1 - dist / attractRadius));
+            c.x += normX * strength;
+            c.y += normY * strength;
+          }
         }
         c.draw();
       }
